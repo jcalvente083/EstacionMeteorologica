@@ -1,0 +1,229 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+
+//  --- CONFIGURACIÓN DE RED ---
+// #TODO: Rellena los datos de la red y la IP del servidor MQTT (ipconfig)
+const char* ssid = "SSID_RED";
+const char* password = "CONTRASENA_RED";
+const char* mqtt_server = "IP_PC"; 
+
+//  --- CONFIGURACIÓN DE TELEGRAM ---
+// #TODO: Rellena los datos del bot y del chat para recibir las notificaciones.
+#define TOKEN_BOT "TOKEN_BOT"
+#define CHAT_ID   "ID_CHAT"
+
+//  --- CONFIGURACIÓN DE PINES ---
+// #TODO: Rellena con los pines que vamos a usar para la lectura de la temperatura y para el LED RGB.
+const int thermistorPin = ;             // RECORDATORIO: Debe de ser uno de los pines indicados que leen ADC
+const byte ledPins[] = {};              // RECORDATORIO: Serán tres pines separados por coma, en orden serán Rojo(R), Verde(G) y Azul(B)
+const byte chns[]    = {0, 1, 2};     
+   
+//  --- DEFINICIÓN DE CONSTANTES ---
+const int delayTime = ;                 // #TODO: Rellena con la cantidad de milisegundos (ms) para el intervalo de lectura de los sensores.
+// #TODO: Rellena con los umbrales de avisos para humedad y temperatura.
+float TEMPERATURA_MINIMA = ;            
+float TEMPERATURA_MAXIMA = ;            
+float HUMEDAD_MINIMA     = ;            
+float HUMEDAD_MAXIMA     = ;            
+
+//  --- PROTOTIPOS ---
+void setup_wifi();
+float getTemperatura();
+float getHumedad();
+void encenderLed(char color);
+void setColor(byte r, byte g, byte b);
+void avisar(float temperatura, float humedad);
+void reconnect();
+void enviarAlertaTelegram(String mensaje);
+
+//  --- CLIENTES ---
+WiFiClientSecure botClient;
+WiFiClient       espClient;
+UniversalTelegramBot bot(TOKEN_BOT, botClient);
+PubSubClient client(espClient);
+
+// ============================================================
+void setup() {
+  Serial.begin(115200);
+
+  for (int i = 0; i < 3; i++) {
+    ledcAttachChannel(ledPins[i], 1000, 8, chns[i]);
+  }
+
+  setup_wifi();
+
+  botClient.setInsecure();
+
+  client.setServer(mqtt_server, 1883);
+}
+
+// ============================================================
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  // #TODO: Obten la temperatura y la humedad con sus respectivas funciones:
+  float temperatura = ;
+  float humedad     = ;
+
+  avisar(temperatura, humedad);
+
+  // Crear el JSON payload
+  char msg[100];
+  snprintf(msg, sizeof(msg), "{\"temperatura\": %.2f, \"humedad\": %.2f}", temperatura, humedad);
+
+  // Enviar vía MQTT
+  Serial.print("Enviando mensaje: ");
+  Serial.println(msg);
+  client.publish("esp32/clima", msg);
+
+  delay(delayTime); 
+}
+
+// ============================================================
+void setup_wifi() {
+  delay(10);
+  Serial.print("Conectando a ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi conectado.");
+  Serial.print("IP del ESP32: ");
+  Serial.println(WiFi.localIP());
+}
+
+// ============================================================
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Intentando conexión MQTT...");
+    if (client.connect("ESP32Client")) {
+      Serial.println("conectado");
+    } else {
+      Serial.print("falló, rc=");
+      Serial.print(client.state());
+      Serial.println(" reintentando en 5s");
+      delay(5000);
+    }
+  }
+}
+
+// ============================================================
+/**
+  getTemperatura(): Función que devuelve la temperatura (en grados Celsius) leída desde el pin del Termistor.
+  OUTPUT:
+    return (float): Temperatura en Grados Celsius (ºC).
+*/
+float getTemperatura() {
+  int adcValue = analogRead(thermistorPin);
+
+  if (adcValue <= 0 || adcValue >= 4095) {
+    Serial.println("ADVERTENCIA: lectura ADC inválida");
+    return -999.0;
+  }
+
+  double voltage = (double)adcValue / 4095.0 * 3.3;
+  double Rt      = 10.0 * voltage / (3.3 - voltage);
+
+  if (Rt <= 0) {
+    Serial.println("ADVERTENCIA: Rt inválido");
+    return -999.0;
+  }
+
+  double tempK = 1.0 / (1.0 / (273.15 + 25.0) + log(Rt / 10.0) / 3950.0);
+  return (float)(tempK - 273.15);
+
+}
+
+// ============================================================
+/**
+  getHumedad(): Función que devuelve la humedad ambiental simulada.
+  OUTPUTS:
+    return (float): Humedad simulada, valor entre 40 y 80.
+*/
+float getHumedad() {
+    // #TODO: Devuelve un valor aleatorio entre 40 y 80 para simular la humedad.
+  
+}
+
+// ============================================================
+/**
+  avisar(): Enciende el LED según temperatura y envía alertas Telegram si procede.
+  INPUTS:
+    temperatura (float): Temperatura actual en ºC.
+    humedad     (float): Humedad actual en %.
+*/
+void avisar(float temperatura, float humedad) {
+
+  // --- LED según temperatura ---
+  // #TODO: Encender el led según lectura y realizar avisos vía Telegram
+  if (temperatura < -100) {
+    // AQUI NO HAY QUE HACER NADA, ES UNA CLAUSULA PARA EVITAR FALSAS LECTURAS
+  } else if (temperatura < TEMPERATURA_MINIMA) {
+    
+
+  } else if (temperatura < TEMPERATURA_MAXIMA) {
+    
+  } else {
+    
+  }
+
+  // --- Alertas de humedad ---
+  // #TDOO: Enviar alertas de Telegram por humedad muy alta o muy baja.
+  if (humedad < HUMEDAD_MINIMA) {
+    
+  } else if (humedad > HUMEDAD_MAXIMA) {
+    
+  }
+}
+
+// ============================================================
+/**
+  encenderLed(char color): Función intermediaria para el encendido del led.
+  INPUTS:
+    color (char): Caracter asociado con el color a encender.
+*/
+void encenderLed(char color) {
+    // #TODO: Realizar el encendido de los leds según el char recibido.
+  switch(color) {
+    
+    default:  setColor(255, 255, 255); break;
+  }
+}
+
+// ============================================================
+/**
+  setColor(byte r, byte g, byte b): Enciende el LED RGB con el color indicado.
+  INPUTS: 
+    r (byte): Cantidad de rojo   (0-255).
+    g (byte): Cantidad de verde  (0-255).
+    b (byte): Cantidad de azul   (0-255).
+*/
+void setColor(byte r, byte g, byte b) {
+  ledcWrite(ledPins[0], 255 - r);
+  ledcWrite(ledPins[1], 255 - g);
+  ledcWrite(ledPins[2], 255 - b);
+}
+
+// ============================================================
+/**
+  enviarAlertaTelegram(String mensaje): Envía un mensaje de alerta por Telegram.
+  INPUTS:
+    mensaje (String): Texto del mensaje a enviar.
+*/
+void enviarAlertaTelegram(String mensaje) {
+  if (WiFi.status() == WL_CONNECTED) {
+    bool enviado = bot.sendMessage(CHAT_ID, mensaje, "");
+    if (enviado) {
+      Serial.println("Alerta Telegram enviada: " + mensaje);
+    } else {
+      Serial.println("Error al enviar alerta Telegram");
+    }
+  }
+}
