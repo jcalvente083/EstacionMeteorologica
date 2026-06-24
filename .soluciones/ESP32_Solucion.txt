@@ -2,7 +2,7 @@
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
-
+ 
 //  --- CONFIGURACIÓN DE RED ---
 const char* ssid = "Fankinet_k9yJ";
 const char* password = "n5ERbsJF";
